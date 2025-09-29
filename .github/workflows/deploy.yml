@@ -1,0 +1,31 @@
+name: deploy-ec2
+on:
+  push:
+    branches: [ main ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            set -e
+            if [ -d "$HOME/BookPortal/.git" ]; then
+              cd "$HOME/BookPortal"
+              git remote set-url origin https://github.com/sgoettschMSCS/book-portal.git
+              git fetch origin
+              git checkout -B main origin/main
+            else
+              git clone https://github.com/sgoettschMSCS/book-portal.git "$HOME/BookPortal"
+              cd "$HOME/BookPortal"
+            fi
+            unzip -o dbData.zip -d dbData || true
+            docker compose pull || true
+            docker compose up -d --build
+            docker ps
