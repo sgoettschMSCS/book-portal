@@ -1,36 +1,25 @@
 name: deploy-ec2
-on:
-  push:
-    branches: [ main ]
-concurrency:
-  group: deploy-ec2
-  cancel-in-progress: true
+on: { push: { branches: [ main ] } }
+concurrency: { group: deploy-ec2, cancel-in-progress: true }
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy via SSH (fail-fast & verbose)
+      - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
+          command_timeout: 45m   # <-- was 10m default
           script: |
             set -Eeuo pipefail
-            trap 'echo "::error::deploy failed on line $LINENO"; exit 1' ERR
-            echo "HOME=$HOME"; pwd; whoami
             rm -rf "$HOME/BookPortal"
             git clone --depth 1 https://github.com/sgoettschMSCS/book-portal.git "$HOME/BookPortal"
             cd "$HOME/BookPortal"
             unzip -o dbData.zip -d dbData || true
-            sed -i 's/mvn -f \/usr\/src\/app\/pom.xml clean package/mvn -f \/usr\/src\/app\/pom.xml clean package -DskipTests/' book-portal-be/Dockerfile
-            echo "== docker compose config =="
-            docker compose config > /dev/null
-            echo "== build (plain logs) =="
-            timeout 30m docker compose build --progress=plain
-            echo "== up =="
+            docker compose build --progress=plain
             docker compose up -d
-            echo "== ps =="
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
