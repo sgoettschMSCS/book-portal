@@ -1,25 +1,28 @@
 name: deploy-ec2
 on: { push: { branches: [ main ] } }
 concurrency: { group: deploy-ec2, cancel-in-progress: true }
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
-      - name: Deploy via SSH
+      - name: Deploy via SSH (fast)
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ubuntu
           key: ${{ secrets.EC2_SSH_KEY }}
-          command_timeout: 45m   # <-- was 10m default
+          script_stop: true
+          command_timeout: 45m
           script: |
             set -Eeuo pipefail
             rm -rf "$HOME/BookPortal"
             git clone --depth 1 https://github.com/sgoettschMSCS/book-portal.git "$HOME/BookPortal"
             cd "$HOME/BookPortal"
             unzip -o dbData.zip -d dbData || true
-            docker compose build --progress=plain
+            docker compose pull book-portal-be
+            docker compose build --progress=plain book-portal-fe proxy
             docker compose up -d
             docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
