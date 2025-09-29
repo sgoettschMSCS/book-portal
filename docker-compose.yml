@@ -13,14 +13,14 @@ services:
       - ./dbData:/docker-entrypoint-initdb.d:ro
     command: --default-authentication-plugin=mysql_native_password --sql-mode=""
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-pRoot123!"]
+      test: ["CMD","mysqladmin","ping","-h","localhost","-u","root","-pRoot123!"]
       interval: 10s
       timeout: 5s
       retries: 12
 
   book-portal-be:
-    build: ./book-portal-be
-    container_name: "book-portal-be"
+    image: ugurcanerdogan/book-portal-be:latest
+    container_name: book-portal-be
     restart: always
     depends_on:
       mysql:
@@ -29,23 +29,16 @@ services:
       - SPRING_DATASOURCE_URL=jdbc:mysql://mysql:3306/book_portal?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
       - SPRING_DATASOURCE_USERNAME=uqi
       - SPRING_DATASOURCE_PASSWORD=Deneme123..
-    ports:
-      - "8080:8080"
 
   book-portal-fe:
     build: ./book-portal-fe
-    container_name: "book-portal-fe"
-    depends_on:
-      - book-portal-be
-    ports:
-      - "3000:3000"
+    container_name: book-portal-fe
+    depends_on: [book-portal-be]
+    ports: ["3000:3000"]
 
   proxy:
     build: ./nginx
-    container_name: "book-portal-proxy"
+    container_name: book-portal-proxy
     restart: always
-    ports:
-      - "80:80"
-    depends_on:
-      - book-portal-fe
-      - book-portal-be
+    ports: ["80:80"]
+    depends_on: [book-portal-fe, book-portal-be]
